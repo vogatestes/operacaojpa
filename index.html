@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operação JPA</title>
+<style>
+  :root {
+    --navy: #0f172a;
+    --navy-light: #1e293b;
+    --teal: #0d9488;
+    --teal-light: #ecfdf5;
+    --red: #ef4444;
+    --border: #e2e8f0;
+    --bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: #1e293b;
+    padding-bottom: 90px;
+  }
+  .header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--navy); color: #fff;
+    padding: 16px 18px;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .header p { font-size: 12px; margin: 2px 0 0; color: #94a3b8; }
+  .header-count { text-align: right; }
+  .header-count .label { font-size: 10px; text-transform: uppercase; color: #64748b; letter-spacing: .04em; }
+  .header-count .value { font-size: 18px; font-weight: 700; color: #5eead4; }
+  .tabs { display: flex; gap: 4px; margin-top: 12px; background: var(--navy-light); border-radius: 8px; padding: 4px; }
+  .tabs button {
+    flex: 1; padding: 7px 0; border: none; border-radius: 6px; background: transparent;
+    color: #cbd5e1; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .tabs button.active { background: #fff; color: var(--navy); }
+
+  .container { max-width: 480px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .card { background: #fff; border-radius: 16px; border: 1px solid var(--border); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; margin: 0 0 10px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; }
+  input, select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; background: #fff;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(13,148,136,.15); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 10px; }
+  .readonly { padding: 9px 11px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--border); font-size: 13px; color: #64748b; }
+  .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill {
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); background: #fff; color: #475569; cursor: pointer;
+  }
+  .pill.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .btn { width: 100%; padding: 11px; border: none; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn-teal { background: var(--teal); color: #fff; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-outline { background: #fff; border: 2px dashed var(--teal); color: var(--teal); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-small { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; }
+  .link-btn { background: none; border: none; color: var(--teal); font-size: 12px; font-weight: 600; cursor: pointer; }
+  .banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--teal-light); border: 1px solid #99f6e4; border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 12px; color: #0f766e;
+  }
+  .item-card { background: #fff; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+  .item-card-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  .badge-num { width: 26px; height: 26px; border-radius: 999px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .lote-label { font-size: 10px; text-transform: uppercase; color: #94a3b8; line-height: 1; }
+  .lote-value { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .tag { font-size: 10.5px; font-weight: 600; border-radius: 999px; padding: 3px 8px; }
+  .tag-teal { background: var(--teal-light); color: #0f766e; border: 1px solid #99f6e4; }
+  .tag-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .tag-gray { background: #f1f5f9; color: #64748b; border: 1px solid var(--border); }
+  .item-card-body { padding: 14px; }
+  .suggest { position: relative; }
+  .suggest-list { position: absolute; z-index: 30; left: 0; right: 0; margin-top: 4px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.08); max-height: 200px; overflow-y: auto; }
+  .suggest-item { display: block; width: 100%; text-align: left; padding: 8px 12px; border: none; background: none; border-bottom: 1px solid #f8fafc; cursor: pointer; font-size: 13px; }
+  .suggest-item:hover { background: #f8fafc; }
+  .suggest-item .sub { font-size: 11px; color: #94a3b8; }
+  .calc-toggle { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; border: 1px solid #99f6e4; color: #0f766e; background: #fff; cursor: pointer; }
+  .calc-toggle.active { background: var(--teal); color: #fff; }
+  .calc-box { margin-top: 8px; padding: 10px; border-radius: 10px; background: #f8fafc; border: 1px solid var(--border); }
+  .calc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .calc-grid input { text-align: center; font-size: 13px; padding: 6px; }
+  .calc-preview { font-size: 12px; color: #64748b; text-align: center; margin: 6px 0; }
+  .parcela { display: flex; justify-content: space-between; font-size: 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin-top: 4px; }
+  .footer-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--border); padding: 12px 16px; }
+  .footer-bar .inner { max-width: 480px; margin: 0 auto; }
+  .confirm-msg { text-align: center; font-size: 12px; color: #0f766e; margin-top: 8px; font-weight: 500; }
+  .warn-msg { font-size: 11.5px; color: #d97706; margin-top: 4px; }
+  .hist-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 2px; border-bottom: 1px solid #f8fafc; }
+  .hist-row:last-child { border-bottom: none; }
+  .empty-msg { text-align: center; color: #94a3b8; font-size: 13px; padding: 16px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1 id="tituloAba">Entrada de Fornecedores</h1>
+      <p>Operação JPA</p>
+    </div>
+    <div class="header-count">
+      <div class="label" id="labelContagem">Lotes nesta remessa</div>
+      <div class="value" id="valorContagem">1</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="active" data-aba="entrada">📥 Entrada</button>
+    <button data-aba="baixa">📦 Baixa</button>
+    <button data-aba="descarte">🗑️ Descarte</button>
+  </div>
+</div>
+
+<!-- ================= ABA ENTRADA ================= -->
+<div class="container" id="abaEntrada">
+  <div class="card">
+    <p class="card-title">Dados da remessa (uma vez só)</p>
+    <div class="row2">
+      <div class="field">
+        <label>Chegada</label>
+        <div class="readonly" id="entradaChegadaTexto"></div>
+      </div>
+      <div class="field">
+        <label>NF</label>
+        <input id="entradaNf" placeholder="Número da nota">
+      </div>
+    </div>
+    <div id="entradaBannerNota"></div>
+    <label style="margin-top:8px">Planta que enviou</label>
+    <div class="pill-group" id="entradaPlantas"></div>
+  </div>
+
+  <div id="entradaItensContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+
+  <button class="btn btn-outline" id="btnAdicionarLote">+1 adicionar próximo lote</button>
+</div>
+
+<!-- ================= ABA BAIXA ================= -->
+<div class="container hidden" id="abaBaixa">
+  <div class="card" style="position:relative;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="card-title" id="baixaTituloBusca" style="margin:0;">Qual item vai dar baixa?</p>
+      <button class="link-btn" id="baixaAlternarModo">buscar por lote fornecedor</button>
+    </div>
+    <div id="baixaBuscaItemWrap">
+      <input id="baixaBuscaItem" placeholder="Comece a digitar o nome do item...">
+      <div class="suggest-list hidden" id="baixaSugestoes"></div>
+      <div id="baixaCodigoInfo"></div>
+    </div>
+    <div id="baixaBuscaFornecedorWrap" class="hidden">
+      <input id="baixaBuscaFornecedor" placeholder="Número do lote do fornecedor...">
+      <div id="baixaResultadosFornecedor" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+  </div>
+
+  <div id="baixaLotesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+  <div id="baixaFilaContainer"></div>
+
+  <div class="card">
+    <p class="card-title">Últimas 20 baixas</p>
+    <div id="baixaHistorico"></div>
+  </div>
+</div>
+
+<!-- ================= ABA DESCARTE ================= -->
+<div class="container hidden" id="abaDescarte">
+  <div class="card" style="position:relative;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <p class="card-title" id="descarteTituloBusca" style="margin:0;">Qual item vai descartar?</p>
+      <button class="link-btn" id="descarteAlternarModo">buscar por lote fornecedor</button>
+    </div>
+    <div id="descarteBuscaItemWrap">
+      <input id="descarteBuscaItem" placeholder="Comece a digitar o nome do item...">
+      <div class="suggest-list hidden" id="descarteSugestoes"></div>
+      <div id="descarteCodigoInfo"></div>
+    </div>
+    <div id="descarteBuscaFornecedorWrap" class="hidden">
+      <input id="descarteBuscaFornecedor" placeholder="Número do lote do fornecedor...">
+      <div id="descarteResultadosFornecedor" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+  </div>
+
+  <div id="descarteLotesContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+  <div id="descarteFilaContainer"></div>
+
+  <div class="card">
+    <p class="card-title">Últimos 20 descartes</p>
+    <div id="descarteHistorico"></div>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <div class="inner">
+    <button class="btn btn-teal" id="btnAcaoPrincipal">Enviar</button>
+    <div class="confirm-msg hidden" id="msgConfirmacao"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — cole aqui a URL do Apps Script (termina em /exec)
+// ============================================================
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKr1alZugopQCYei-rT-CNLGrEehE-p9Ql0D6qPhnuFmSjNzAjA1rrcJz8t-ONixmnCA/exec";
+const PLANTAS = ["CDVA", "RAPOSO", "MOGI", "HORTOLÂNDIA", "MEGA RIO", "INHAÚMA"];
+const VALIDADE_OPCOES = [{ label: "3 meses", meses: 3 }, { label: "6 meses", meses: 6 }, { label: "1 ano", meses: 12 }];
+
+// ============================================================
+// Helpers
+// ============================================================
+function hojeISO() { return new Date().toISOString().slice(0, 10); }
+function formatarBR(iso) { if (!iso) return ""; const [a,m,d] = iso.split("-"); return `${d}/${m}/${a}`; }
+function formatarNumeroBR(n) { if (n === "" || n === null || n === undefined || isNaN(n)) return ""; return Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 3 }); }
+function somarMeses(iso, meses) { if (!iso) return ""; const d = new Date(iso + "T00:00:00"); d.setMonth(d.getMonth() + meses); return d.toISOString().slice(0, 10); }
+function uid() { return Date.now() + "_" + Math.random().toString(36).slice(2); }
+
+async function apiGet(action, params = {}) {
+  const url = new URL(WEB_APP_URL);
+  url.searchParams.set("action", action);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Erro desconhecido");
+  return json.data;
+}
+
+async function apiPost(action, payload) {
+  const res = await fetch(WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action, payload }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Erro desconhecido");
+  return json.data;
+}
+
+function getUltimoColaboradorLocal() {
+  return localStorage.getItem("ultimoColaborador") || "";
+}
+function setUltimoColaboradorLocal(nome) {
+  if (nome) localStorage.setItem("ultimoColaborador", nome);
+}
+
+// ============================================================
+// Estado global
+// ============================================================
+let abaAtual = "entrada";
+let catalogoItens = [];
+
+const entradaState = {
+  chegada: hojeISO(),
+  nf: "",
+  planta: "",
+  itens: [],
+  notaCarregada: null,
+  proximoLoteCache: 1,
+};
+
+function novoItemEntrada(overrides = {}) {
+  return Object.assign({
+    id: uid(), loteBimbo: null, daPlanilha: false, salvo: false,
+    item: "", codigo: "", udm: "", loteFornecedor: "", fabricacao: "", validade: "",
+    qtdRecebida: "", qtdNota: "", observacao: "",
+    calcAberto: false, calcAmarrado: "", calcAltura: "", calcPeso: "", parcelas: [],
+  }, overrides);
+}
+
+const baixaState = { modoBusca: "item", itemSelecionado: null, lotes: [], fila: [], expandido: null, forms: {} };
+const descarteState = { modoBusca: "item", itemSelecionado: null, lotes: [], fila: [], expandido: null, forms: {} };
+
+// ============================================================
+// Inicialização
+// ============================================================
+async function init() {
+  document.getElementById("entradaChegadaTexto").textContent = formatarBR(entradaState.chegada) + " (hoje)";
+  renderPlantas();
+
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => trocarAba(btn.dataset.aba));
+  });
+
+  try {
+    catalogoItens = await apiGet("itens");
+  } catch (e) {
+    console.error("Falha ao carregar itens:", e.message);
+  }
+
+  try {
+    entradaState.proximoLoteCache = (await apiGet("proximoLote")).proximoLote;
+  } catch (e) { console.error(e.message); }
+
+  entradaState.itens = [novoItemEntrada({ loteBimbo: entradaState.proximoLoteCache })];
+
+  bindEntradaEventos();
+  bindBaixaEventos();
+  bindDescarteEventos();
+
+  renderEntrada();
+  carregarHistoricoBaixas();
+  carregarHistoricoDescartes();
+
+  document.getElementById("btnAcaoPrincipal").addEventListener("click", acaoPrincipal);
+}
+
+function trocarAba(aba) {
+  abaAtual = aba;
+  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.aba === aba));
+  document.getElementById("abaEntrada").classList.toggle("hidden", aba !== "entrada");
+  document.getElementById("abaBaixa").classList.toggle("hidden", aba !== "baixa");
+  document.getElementById("abaDescarte").classList.toggle("hidden", aba !== "descarte");
+
+  const titulos = { entrada: "Entrada de Fornecedores", baixa: "Baixa de Estoque", descarte: "Descarte" };
+  document.getElementById("tituloAba").textContent = titulos[aba];
+
+  const labels = { entrada: "Lotes nesta remessa", baixa: "Baixas na fila", descarte: "Descartes na fila" };
+  document.getElementById("labelContagem").textContent = labels[aba];
+  const valores = { entrada: entradaState.itens.length, baixa: baixaState.fila.length, descarte: descarteState.fila.length };
+  document.getElementById("valorContagem").textContent = valores[aba];
+
+  const btn = document.getElementById("btnAcaoPrincipal");
+  if (aba === "entrada") btn.className = "btn btn-teal";
+  else if (aba === "baixa") btn.className = "btn btn-teal";
+  else btn.className = "btn btn-red";
+
+  atualizarBotaoPrincipal();
+}
+
+function atualizarBotaoPrincipal() {
+  const btn = document.getElementById("btnAcaoPrincipal");
+  if (abaAtual === "entrada") {
+    const totalPreenchido = entradaState.itens.filter((it) => it.qtdRecebida !== "").length;
+    btn.textContent = entradaState.notaCarregada
+      ? `Salvar itens preenchidos (${totalPreenchido}/${entradaState.itens.length})`
+      : `Enviar ${entradaState.itens.length} registro${entradaState.itens.length > 1 ? "s" : ""}`;
+    btn.disabled = false;
+  } else if (abaAtual === "baixa") {
+    btn.textContent = `Finalizar ${baixaState.fila.length} baixa${baixaState.fila.length !== 1 ? "s" : ""}`;
+    btn.disabled = baixaState.fila.length === 0;
+  } else {
+    btn.textContent = `Finalizar ${descarteState.fila.length} descarte${descarteState.fila.length !== 1 ? "s" : ""}`;
+    btn.disabled = descarteState.fila.length === 0;
+  }
+}
+
+function mostrarConfirmacao(texto) {
+  const el = document.getElementById("msgConfirmacao");
+  el.textContent = texto;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 4000);
+}
+
+// ============================================================
+// ABA ENTRADA
+// ============================================================
+function renderPlantas() {
+  const wrap = document.getElementById("entradaPlantas");
+  wrap.innerHTML = "";
+  PLANTAS.forEach((p) => {
+    const btn = document.createElement("button");
+    btn.className = "pill" + (entradaState.planta === p ? " active" : "");
+    btn.textContent = p;
+    btn.addEventListener("click", () => { entradaState.planta = p; renderPlantas(); });
+    wrap.appendChild(btn);
+  });
+}
+
+function bindEntradaEventos() {
+  document.getElementById("entradaNf").addEventListener("input", async (e) => {
+    entradaState.nf = e.target.value;
+    entradaState.notaCarregada = null;
+    if (!entradaState.nf) { document.getElementById("entradaBannerNota").innerHTML = ""; return; }
+    try {
+      const nota = await apiGet("notaPendente", { nf: entradaState.nf });
+      if (nota.itens && nota.itens.length) {
+        document.getElementById("entradaBannerNota").innerHTML = `
+          <div class="banner">
+            <span>📋 ${nota.itens.length} itens já cadastrados na planilha p/ essa NF</span>
+            <button class="btn-small btn-teal" style="background:var(--teal);color:#fff;" id="btnCarregarNota">Carregar</button>
+          </div>`;
+        document.getElementById("btnCarregarNota").addEventListener("click", () => carregarNota(nota));
+      } else {
+        document.getElementById("entradaBannerNota").innerHTML = "";
+      }
+    } catch (err) { console.error(err.message); }
+  });
+
+  document.getElementById("btnAdicionarLote").addEventListener("click", async () => {
+    let proximo;
+    try { proximo = (await apiGet("proximoLote")).proximoLote; }
+    catch { proximo = entradaState.proximoLoteCache + entradaState.itens.length; }
+    const ultimo = entradaState.itens[entradaState.itens.length - 1];
+    const novo = novoItemEntrada({ loteBimbo: proximo });
+    if (ultimo) { novo.calcAmarrado = ultimo.calcAmarrado; novo.calcAltura = ultimo.calcAltura; novo.calcPeso = ultimo.calcPeso; novo.calcAberto = ultimo.calcAberto; }
+    entradaState.itens.push(novo);
+    renderEntrada();
+  });
+}
+
+function carregarNota(nota) {
+  if (nota.planta) entradaState.planta = nota.planta;
+  entradaState.itens = nota.itens.map((i) => novoItemEntrada({
+    loteBimbo: i.loteBimbo, daPlanilha: true, item: i.item, codigo: i.codigo, udm: i.udm,
+    qtdNota: i.qtdNota, salvo: !!i.salvo, loteFornecedor: i.loteFornecedor || "",
+    fabricacao: i.fabricacao || "", validade: i.validade || "",
+    qtdRecebida: i.qtdRecebida === undefined || i.qtdRecebida === null ? "" : i.qtdRecebida,
+    observacao: i.observacao || "",
+  }));
+  entradaState.notaCarregada = entradaState.nf;
+  document.getElementById("entradaBannerNota").innerHTML = `<div class="banner"><span>✓ Itens carregados da planilha para a NF ${entradaState.nf}</span></div>`;
+  renderPlantas();
+  renderEntrada();
+}
+
+function renderEntrada() {
+  const container = document.getElementById("entradaItensContainer");
+  container.innerHTML = "";
+  entradaState.itens.forEach((it, idx) => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+
+    const statusTag = it.daPlanilha
+      ? `<span class="tag ${it.salvo ? "tag-teal" : "tag-amber"}">${it.salvo ? "✅ salvo" : "⏳ pendente"}</span>`
+      : "";
+
+    card.innerHTML = `
+      <div class="item-card-head">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge-num">${idx + 1}</span>
+          <div><div class="lote-label">Lote Bimbo</div><div class="lote-value">${it.loteBimbo ?? ""}</div></div>
+          ${statusTag}
+        </div>
+        ${entradaState.itens.length > 1 ? `<button class="link-btn" data-remover="${it.id}">remover</button>` : ""}
+      </div>
+      <div class="item-card-body">
+        <div class="field suggest">
+          <label>Item</label>
+          ${it.daPlanilha
+            ? `<div class="readonly">${it.item}</div>`
+            : `<input data-campo="item" data-id="${it.id}" value="${it.item}" placeholder="Comece a digitar...">
+               <div class="suggest-list hidden" data-sugestoes="${it.id}"></div>`
+          }
+        </div>
+        <div class="row2">
+          <div class="field"><label>Código</label><div class="readonly">${it.codigo || "—"}</div></div>
+          <div class="field"><label>UDM</label><div class="readonly">${it.udm || "—"}</div></div>
+        </div>
+        ${it.daPlanilha ? `<div class="field"><label>Quantidade NOTA (da planilha)</label><div class="readonly">${formatarNumeroBR(it.qtdNota)}</div></div>` : ""}
+        <div class="field"><label>Lote Fornecedor</label><input data-campo="loteFornecedor" data-id="${it.id}" value="${it.loteFornecedor}"></div>
+        <div class="row2">
+          <div class="field"><label>Fabricação</label><input type="date" data-campo="fabricacao" data-id="${it.id}" value="${it.fabricacao}"></div>
+          <div class="field"><label>Validade</label><input type="date" data-campo="validade" data-id="${it.id}" value="${it.validade}"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          ${VALIDADE_OPCOES.map((op) => `<button class="pill" style="flex:1;text-align:center;" data-validade-rapida="${it.id}" data-meses="${op.meses}" ${!it.fabricacao ? "disabled" : ""}>+ ${op.label}</button>`).join("")}
+        </div>
+        <div class="field">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <label style="margin:0;">Qtd. RECEBIDA</label>
+            <button class="calc-toggle ${it.calcAberto ? "active" : ""}" data-calc-toggle="${it.id}">🧮 calculadora</button>
+          </div>
+          <input type="number" data-campo="qtdRecebida" data-id="${it.id}" value="${it.qtdRecebida}">
+          ${it.calcAberto ? renderCalcBox(it) : ""}
+        </div>
+        ${!it.daPlanilha ? `<div class="field"><label>Qtd. NOTA</label><input type="number" data-campo="qtdNota" data-id="${it.id}" value="${it.qtdNota}"></div>` : ""}
+        <div class="field"><label>Observação</label><input data-campo="observacao" data-id="${it.id}" value="${it.observacao}"></div>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  bindItemCardEventos();
+  document.getElementById("valorContagem").textContent = entradaState.itens.length;
+  atualizarBotaoPrincipal();
+}
+
+function renderCalcBox(it) {
+  const parcelasHtml = it.parcelas.map((p) => `
+    <div class="parcela">
+      <span>${p.amarrado} × ${p.altura}${p.peso ? ` × ${p.peso}kg` : ""} = <b>${formatarNumeroBR(p.subtotal)}${p.peso ? "kg" : " un."}</b></span>
+      <button data-remover-parcela="${it.id}" data-parcela="${p.id}" style="border:none;background:none;color:#94a3b8;cursor:pointer;">×</button>
+    </div>`).join("");
+
+  const preview = (Number(it.calcAmarrado) > 0 && Number(it.calcAltura) > 0)
+    ? `<div class="calc-preview">${it.calcAmarrado} × ${it.calcAltura} = ${Number(it.calcAmarrado) * Number(it.calcAltura)} un.${it.calcPeso !== "" ? ` × ${it.calcPeso}kg = <b>${formatarNumeroBR(Number(it.calcAmarrado)*Number(it.calcAltura)*Number(it.calcPeso))}</b>` : ""}</div>`
+    : "";
+
+  return `
+    <div class="calc-box">
+      <div class="calc-grid">
+        <div><label style="font-size:10.5px;">Un./amarrado (lastro)</label><input type="number" data-calc="calcAmarrado" data-id="${it.id}" value="${it.calcAmarrado}" placeholder="5"></div>
+        <div><label style="font-size:10.5px;">Altura</label><input type="number" data-calc="calcAltura" data-id="${it.id}" value="${it.calcAltura}" placeholder="9"></div>
+        <div><label style="font-size:10.5px;">Peso/un. (kg)</label><input type="number" data-calc="calcPeso" data-id="${it.id}" value="${it.calcPeso}" placeholder="25"></div>
+      </div>
+      ${preview}
+      <button class="btn btn-teal" style="margin-top:6px;padding:7px;font-size:12.5px;" data-somar-parcela="${it.id}" ${!(Number(it.calcAmarrado) > 0 && Number(it.calcAltura) > 0) ? "disabled" : ""}>+ somar ao total</button>
+      ${parcelasHtml}
+      ${it.parcelas.length ? `<div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:6px;padding-top:6px;"><span style="font-size:12px;font-weight:600;color:#64748b;">Total</span><span style="font-weight:700;color:var(--teal);">${formatarNumeroBR(it.qtdRecebida)}</span></div>` : ""}
+    </div>`;
+}
+
+function bindItemCardEventos() {
+  document.querySelectorAll("#entradaItensContainer [data-campo]").forEach((el) => {
+    el.addEventListener("input", (e) => {
+      const it = entradaState.itens.find((x) => x.id === e.target.dataset.id);
+      it[e.target.dataset.campo] = e.target.value;
+      if (e.target.dataset.campo === "item") {
+        it.codigo = ""; it.udm = "";
+        mostrarSugestoesEntrada(it);
+      }
+      if (e.target.dataset.campo === "fabricacao") renderEntrada();
+    });
+  });
+
+  document.querySelectorAll("[data-remover]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (entradaState.itens.length > 1) {
+        entradaState.itens = entradaState.itens.filter((x) => x.id !== btn.dataset.remover);
+        renderEntrada();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-validade-rapida]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const it = entradaState.itens.find((x) => x.id === btn.dataset.validadeRapida);
+      it.validade = somarMeses(it.fabricacao, Number(btn.dataset.meses));
+      renderEntrada();
+    });
+  });
+
+  document.querySelectorAll("[data-calc-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const it = entradaState.itens.find((x) => x.id === btn.dataset.calcToggle);
+      it.calcAberto = !it.calcAberto;
+      renderEntrada();
+    });
+  });
+
+  document.querySelectorAll("[data-calc]").forEach((el) => {
+    el.addEventListener("input", (e) => {
+      const it = entradaState.itens.find((x) => x.id === e.target.dataset.id);
+      it[e.target.dataset.calc] = e.target.value;
+      renderEntrada();
+      // reabre o calc depois do re-render (perde foco, aceitável no protótipo)
+    });
+  });
+
+  document.querySelectorAll("[data-somar-parcela]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const it = entradaState.itens.find((x) => x.id === btn.dataset.somarParcela);
+      const amarrado = Number(it.calcAmarrado) || 0;
+      const altura = Number(it.calcAltura) || 0;
+      const peso = it.calcPeso === "" ? 1 : Number(it.calcPeso) || 0;
+      const unidades = amarrado * altura;
+      if (unidades <= 0) return;
+      it.parcelas.push({ id: uid(), amarrado, altura, peso: it.calcPeso === "" ? null : peso, subtotal: unidades * peso });
+      it.qtdRecebida = it.parcelas.reduce((acc, p) => acc + p.subtotal, 0);
+      // mantém lastro, altura e peso preenchidos (igual à primeira parcela), só soma de novo se precisar
+      renderEntrada();
+    });
+  });
+
+  document.querySelectorAll("[data-remover-parcela]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const it = entradaState.itens.find((x) => x.id === btn.dataset.removerParcela);
+      it.parcelas = it.parcelas.filter((p) => p.id !== btn.dataset.parcela);
+      it.qtdRecebida = it.parcelas.length ? it.parcelas.reduce((acc, p) => acc + p.subtotal, 0) : it.qtdRecebida;
+      renderEntrada();
+    });
+  });
+}
+
+function mostrarSugestoesEntrada(it) {
+  const box = document.querySelector(`[data-sugestoes="${it.id}"]`);
+  if (!box) return;
+  const termo = it.item.toLowerCase();
+  const sugestoes = termo ? catalogoItens.filter((c) => c.item.toLowerCase().includes(termo)).slice(0, 6) : [];
+  if (!sugestoes.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+  box.classList.remove("hidden");
+  box.innerHTML = sugestoes.map((s) => `
+    <button class="suggest-item" data-selecionar-item="${it.id}" data-codigo="${s.codigo}">
+      <div>${s.item}</div><div class="sub">${s.codigo} · ${s.udm}</div>
+    </button>`).join("");
+  box.querySelectorAll("[data-selecionar-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = catalogoItens.find((c) => c.codigo === btn.dataset.codigo);
+      it.item = s.item; it.codigo = s.codigo; it.udm = s.udm;
+      renderEntrada();
+    });
+  });
+}
+
+// ============================================================
+// ABA BAIXA / DESCARTE (lógica compartilhada)
+// ============================================================
+function bindBaixaEventos() { bindSaidaEventos("baixa"); }
+function bindDescarteEventos() { bindSaidaEventos("descarte"); }
+
+function bindSaidaEventos(tipo) {
+  const state = tipo === "baixa" ? baixaState : descarteState;
+  const prefixo = tipo;
+
+  document.getElementById(`${prefixo}AlternarModo`).addEventListener("click", () => {
+    state.modoBusca = state.modoBusca === "item" ? "fornecedor" : "item";
+    document.getElementById(`${prefixo}BuscaItemWrap`).classList.toggle("hidden", state.modoBusca !== "item");
+    document.getElementById(`${prefixo}BuscaFornecedorWrap`).classList.toggle("hidden", state.modoBusca !== "fornecedor");
+    document.getElementById(`${prefixo}AlternarModo`).textContent = state.modoBusca === "item" ? "buscar por lote fornecedor" : "buscar por item";
+    document.getElementById(`${prefixo}TituloBusca`).textContent = state.modoBusca === "item"
+      ? (tipo === "baixa" ? "Qual item vai dar baixa?" : "Qual item vai descartar?")
+      : "Buscar pelo Lote Fornecedor";
+  });
+
+  document.getElementById(`${prefixo}BuscaItem`).addEventListener("input", (e) => {
+    const termo = e.target.value.toLowerCase();
+    state.itemSelecionado = null;
+    const box = document.getElementById(`${prefixo}Sugestoes`);
+    const sugestoes = termo ? catalogoItens.filter((c) => c.item.toLowerCase().includes(termo)).slice(0, 6) : [];
+    if (!sugestoes.length) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    box.innerHTML = sugestoes.map((s) => `
+      <button class="suggest-item" data-cod="${s.codigo}"><div>${s.item}</div><div class="sub">${s.codigo} · ${s.udm}</div></button>`).join("");
+    box.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const s = catalogoItens.find((c) => c.codigo === btn.dataset.cod);
+        state.itemSelecionado = s;
+        document.getElementById(`${prefixo}BuscaItem`).value = s.item;
+        box.classList.add("hidden");
+        document.getElementById(`${prefixo}CodigoInfo`).innerHTML = `<div class="banner" style="justify-content:flex-start;gap:12px;"><span>Código</span><b>${s.codigo}</b><span style="margin-left:auto;color:#94a3b8;">${s.udm}</span></div>`;
+        await carregarLotes(tipo);
+      });
+    });
+  });
+
+  document.getElementById(`${prefixo}BuscaFornecedor`).addEventListener("input", async (e) => {
+    const termo = e.target.value;
+    const box = document.getElementById(`${prefixo}ResultadosFornecedor`);
+    if (!termo) { box.innerHTML = ""; return; }
+    try {
+      const resultados = await apiGet("buscaFornecedor", { loteFornecedor: termo });
+      box.innerHTML = resultados.length
+        ? resultados.map((l) => `
+          <button class="suggest-item" style="border:1px solid var(--border);border-radius:8px;" data-lote="${l.loteBimbo}" data-cod="${l.codigo}">
+            <div style="display:flex;justify-content:space-between;"><b>${l.item}</b><span class="tag tag-gray">Lote ${l.loteBimbo}</span></div>
+            <div class="sub">Lote fornecedor ${l.loteFornecedor} · ${l.saldo > 0 ? `<span style="color:var(--teal);font-weight:600;">saldo ${formatarNumeroBR(l.saldo)}</span>` : "saldo zerado"}</div>
+          </button>`).join("")
+        : `<p class="empty-msg">Nenhum lote encontrado.</p>`;
+      box.querySelectorAll("[data-lote]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const s = catalogoItens.find((c) => c.codigo === btn.dataset.cod) || { codigo: btn.dataset.cod, item: "", udm: "" };
+          state.itemSelecionado = s;
+          state.modoBusca = "item";
+          document.getElementById(`${prefixo}BuscaItem`).value = s.item;
+          document.getElementById(`${prefixo}BuscaItemWrap`).classList.remove("hidden");
+          document.getElementById(`${prefixo}BuscaFornecedorWrap`).classList.add("hidden");
+          document.getElementById(`${prefixo}AlternarModo`).textContent = "buscar por lote fornecedor";
+          document.getElementById(`${prefixo}TituloBusca`).textContent = tipo === "baixa" ? "Qual item vai dar baixa?" : "Qual item vai descartar?";
+          await carregarLotes(tipo, Number(btn.dataset.lote));
+        });
+      });
+    } catch (err) { console.error(err.message); }
+  });
+}
+
+async function carregarLotes(tipo, loteParaAbrir) {
+  const state = tipo === "baixa" ? baixaState : descarteState;
+  if (!state.itemSelecionado) return;
+  try {
+    state.lotes = await apiGet("estoque", { codigo: state.itemSelecionado.codigo });
+    if (tipo === "baixa" || tipo === "descarte") {
+      // desconta o que já está na fila (da própria aba e da outra) pra não passar do saldo sem perceber
+      const filaOutra = tipo === "baixa" ? descarteState.fila : baixaState.fila;
+      const filaPropria = state.fila;
+      [...filaOutra, ...filaPropria].forEach((f) => {
+        const lote = state.lotes.find((l) => l.loteBimbo === f.loteBimbo && l.codigo === f.codigo);
+        if (lote) lote.saldo -= Number(f.quantidade || 0);
+      });
+    }
+    if (loteParaAbrir) state.expandido = loteParaAbrir;
+    const zerado = state.lotes.find((l) => l.loteBimbo === loteParaAbrir);
+    if (loteParaAbrir && !state.lotes.some((l) => l.saldo > 0)) {
+      // mantém visível mesmo zerado quando veio de busca por fornecedor
+    }
+    renderLotes(tipo);
+  } catch (err) { console.error(err.message); }
+}
+
+function renderLotes(tipo) {
+  const state = tipo === "baixa" ? baixaState : descarteState;
+  const prefixo = tipo;
+  const container = document.getElementById(`${prefixo}LotesContainer`);
+
+  const lotesVisiveis = state.lotes.filter((l) => l.saldo > 0 || l.loteBimbo === state.expandido);
+  if (!state.itemSelecionado) { container.innerHTML = ""; return; }
+
+  if (!lotesVisiveis.length) {
+    container.innerHTML = `<div class="card"><p class="empty-msg">Nenhum lote encontrado pra esse item.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = lotesVisiveis.map((lote, i) => {
+    const form = state.forms[lote.loteBimbo] || { quantidade: "", observacao: "", motivo: "", colaborador: getUltimoColaboradorLocal() };
+    const zerado = lote.saldo <= 0;
+    const vaiNegativo = Number(form.quantidade) > lote.saldo;
+    const expandido = state.expandido === lote.loteBimbo;
+
+    return `
+      <div class="item-card">
+        <button class="item-card-head" style="width:100%;background:none;border:none;cursor:pointer;" data-toggle-lote="${lote.loteBimbo}" data-tipo="${tipo}">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="badge-num">${lote.loteBimbo}</span>
+            <div style="text-align:left;">
+              <div style="font-size:13px;font-weight:600;">Lote Fornecedor ${lote.loteFornecedor}
+                ${!zerado && i === 0 ? `<span class="tag tag-amber" style="margin-left:6px;">vence primeiro</span>` : ""}
+                ${zerado ? `<span class="tag tag-gray" style="margin-left:6px;">saldo zerado</span>` : ""}
+              </div>
+              <div style="font-size:11px;color:#94a3b8;">Fab. ${formatarBR(lote.fabricacao)} · Val. ${formatarBR(lote.validade)}</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:#94a3b8;">saldo</div>
+            <div style="font-size:15px;font-weight:700;color:${zerado ? "#94a3b8" : "var(--teal)"};">${formatarNumeroBR(lote.saldo)}</div>
+          </div>
+        </button>
+        ${expandido ? `
+        <div style="padding:0 14px 14px;border-top:1px solid #f1f5f9;">
+          <div class="field" style="margin-top:10px;">
+            <label>Quantidade a ${tipo === "baixa" ? "dar baixa" : "descartar"}</label>
+            <input type="number" data-form="quantidade" data-lote="${lote.loteBimbo}" data-tipo="${tipo}" value="${form.quantidade}" placeholder="${zerado ? "saldo já zerado" : `saldo atual: ${formatarNumeroBR(lote.saldo)}`}">
+            ${vaiNegativo ? `<p class="warn-msg">⚠ Isso deixa o saldo negativo (${formatarNumeroBR(lote.saldo - Number(form.quantidade))}) — vai lançar mesmo assim.</p>` : ""}
+          </div>
+          ${tipo === "descarte" ? `<div class="field"><label>Motivo do descarte</label><input data-form="motivo" data-lote="${lote.loteBimbo}" data-tipo="${tipo}" value="${form.motivo || ""}" placeholder="Ex: saco rasgado, validade vencida..."></div>` : ""}
+          <div class="field"><label>Colaborador</label><input data-form="colaborador" data-lote="${lote.loteBimbo}" data-tipo="${tipo}" value="${form.colaborador !== undefined ? form.colaborador : getUltimoColaboradorLocal()}" placeholder="Seu nome"></div>
+          ${tipo === "baixa" ? `<div class="field"><label>Observação</label><input data-form="observacao" data-lote="${lote.loteBimbo}" data-tipo="${tipo}" value="${form.observacao || ""}"></div>` : ""}
+          <button class="btn ${tipo === "baixa" ? "btn-teal" : "btn-red"}" data-add-fila="${lote.loteBimbo}" data-tipo="${tipo}" ${!(Number(form.quantidade) > 0) ? "disabled" : ""}>Adicionar ${tipo === "baixa" ? "baixa" : "descarte"} à fila</button>
+        </div>` : ""}
+      </div>`;
+  }).join("");
+
+  bindLotesEventos(tipo);
+  renderFila(tipo);
+}
+
+function bindLotesEventos(tipo) {
+  const state = tipo === "baixa" ? baixaState : descarteState;
+  document.querySelectorAll(`[data-toggle-lote][data-tipo="${tipo}"]`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lote = Number(btn.dataset.toggleLote);
+      state.expandido = state.expandido === lote ? null : lote;
+      renderLotes(tipo);
+    });
+  });
+  document.querySelectorAll(`[data-form][data-tipo="${tipo}"]`).forEach((el) => {
+    el.addEventListener("input", (e) => {
+      const lote = Number(e.target.dataset.lote);
+      state.forms[lote] = state.forms[lote] || {};
+      state.forms[lote][e.target.dataset.form] = e.target.value;
+      renderLotes(tipo);
+    });
+  });
+  document.querySelectorAll(`[data-add-fila][data-tipo="${tipo}"]`).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lote = Number(btn.dataset.addFila);
+      const loteObj = state.lotes.find((l) => l.loteBimbo === lote);
+      const form = state.forms[lote] || {};
+      const quantidade = Number(form.quantidade) || 0;
+      if (quantidade <= 0) return;
+      const colaborador = form.colaborador || getUltimoColaboradorLocal();
+      state.fila.push({
+        id: uid(), codigo: loteObj.codigo, item: loteObj.item, udm: loteObj.udm,
+        loteBimbo: lote, loteFornecedor: loteObj.loteFornecedor, quantidade, colaborador,
+        observacao: form.observacao || "", motivo: form.motivo || "",
+      });
+      setUltimoColaboradorLocal(colaborador);
+      state.forms[lote] = { quantidade: "", observacao: "", motivo: "", colaborador };
+      state.expandido = null;
+      loteObj.saldo -= quantidade;
+      renderLotes(tipo);
+      atualizarBotaoPrincipal();
+      document.getElementById("valorContagem").textContent = state.fila.length;
+    });
+  });
+}
+
+function renderFila(tipo) {
+  const state = tipo === "baixa" ? baixaState : descarteState;
+  const container = document.getElementById(`${tipo}FilaContainer`);
+  if (!state.fila.length) { container.innerHTML = ""; return; }
+  container.innerHTML = `
+    <div class="card">
+      <p class="card-title">Fila de ${tipo === "baixa" ? "baixas" : "descartes"} (${state.fila.length})</p>
+      ${state.fila.map((f) => `
+        <div style="display:flex;justify-content:space-between;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">${f.item}</div>
+            <div style="font-size:11px;color:#94a3b8;">Lote BIMBO ${f.loteBimbo} · Lote fornecedor ${f.loteFornecedor} · ${formatarNumeroBR(f.quantidade)} ${f.udm} · ${f.colaborador || "—"}${f.motivo ? ` · ${f.motivo}` : ""}</div>
+          </div>
+          <button class="link-btn" data-remover-fila="${f.id}" data-tipo="${tipo}">remover</button>
+        </div>`).join("")}
+    </div>`;
+  container.querySelectorAll("[data-remover-fila]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.fila = state.fila.filter((f) => f.id !== btn.dataset.removerFila);
+      renderFila(tipo);
+      atualizarBotaoPrincipal();
+      document.getElementById("valorContagem").textContent = state.fila.length;
+    });
+  });
+}
+
+async function carregarHistoricoBaixas() {
+  try {
+    const dados = await apiGet("ultimasBaixas");
+    document.getElementById("baixaHistorico").innerHTML = dados.length
+      ? dados.map((b) => `
+        <div class="hist-row">
+          <div><div style="font-weight:500;">${b.item}</div><div style="color:#94a3b8;">Lote BIMBO ${b.loteBimbo} · Lote fornecedor ${b.loteFornecedor}</div></div>
+          <div style="text-align:right;"><div style="font-weight:600;">${formatarNumeroBR(b.saida)}</div><div style="color:#94a3b8;">${b.colaborador} · ${formatarBR(b.data)}</div></div>
+        </div>`).join("")
+      : `<p class="empty-msg">Nenhuma baixa registrada ainda.</p>`;
+  } catch (err) { console.error(err.message); }
+}
+
+async function carregarHistoricoDescartes() {
+  try {
+    const dados = await apiGet("ultimosDescartes");
+    document.getElementById("descarteHistorico").innerHTML = dados.length
+      ? dados.map((d) => `
+        <div class="hist-row">
+          <div><div style="font-weight:500;">${d.item}</div><div style="color:#94a3b8;">Lote BIMBO ${d.loteBimbo} · Lote fornecedor ${d.loteFornecedor}${d.motivo ? ` · ${d.motivo}` : ""}</div></div>
+          <div style="text-align:right;"><div style="font-weight:600;">${formatarNumeroBR(d.saida)}</div><div style="color:#94a3b8;">${d.colaborador} · ${formatarBR(d.data)}</div></div>
+        </div>`).join("")
+      : `<p class="empty-msg">Nenhum descarte registrado ainda.</p>`;
+  } catch (err) { console.error(err.message); }
+}
+
+// ============================================================
+// Ação principal (botão inferior fixo)
+// ============================================================
+async function acaoPrincipal() {
+  if (WEB_APP_URL.indexOf("COLE_AQUI") !== -1) {
+    alert("Configure a URL do Apps Script no topo do arquivo antes de usar.");
+    return;
+  }
+  const btn = document.getElementById("btnAcaoPrincipal");
+  btn.disabled = true;
+
+  try {
+    if (abaAtual === "entrada") {
+      const resultado = await apiPost("salvarEntradas", {
+        nf: entradaState.nf, chegada: entradaState.chegada, planta: entradaState.planta,
+        itens: entradaState.itens,
+      });
+      entradaState.itens.forEach((it) => { if (it.qtdRecebida !== "") it.salvo = true; });
+      renderEntrada();
+      const pendentes = entradaState.itens.length - resultado.salvos;
+      mostrarConfirmacao(
+        entradaState.notaCarregada
+          ? (pendentes > 0
+              ? `✓ ${resultado.salvos} salvo(s) · ⏳ ${pendentes} ainda pendente(s) — pode continuar depois`
+              : `✓ Todos os ${resultado.salvos} itens desta NF foram salvos`)
+          : `✓ ${resultado.salvos} linha(s) adicionada(s) à aba Entradas`
+      );
+    } else if (abaAtual === "baixa") {
+      await apiPost("salvarBaixas", { itens: baixaState.fila });
+      mostrarConfirmacao(`✓ ${baixaState.fila.length} baixa(s) registrada(s) na planilha`);
+      baixaState.fila = [];
+      renderFila("baixa");
+      await carregarHistoricoBaixas();
+    } else {
+      await apiPost("salvarDescartes", { itens: descarteState.fila });
+      mostrarConfirmacao(`✓ ${descarteState.fila.length} descarte(s) registrado(s) na planilha`);
+      descarteState.fila = [];
+      renderFila("descarte");
+      await carregarHistoricoDescartes();
+    }
+  } catch (err) {
+    alert("Erro ao salvar: " + err.message);
+  } finally {
+    atualizarBotaoPrincipal();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
